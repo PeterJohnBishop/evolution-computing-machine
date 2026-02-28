@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -84,22 +85,26 @@ func (h *Hub) Run() {
 
 // broadcast to all
 func handleBroadcast(hub *Hub, msg WSMessage) {
+	fmt.Printf("handleBroadcast recieved: %s", msg)
 	hub.Broadcast <- msg
 }
 
 // process then broadcast
 func handleProcessedBroadcast(hub *Hub, msg WSMessage) {
+	fmt.Printf("handleProcessedBroadcast recieved: %s", msg)
 	msg.Content = "ALARM: " + msg.Content // Example processing
 	hub.Broadcast <- msg
 }
 
 // broadcast direct to client x
 func handlePrivate(hub *Hub, msg WSMessage) {
+	fmt.Printf("handlePrivate recieved: %s", msg)
 	hub.Direct <- msg
 }
 
 // process then broadcast to client x
 func handleProcessedPrivate(hub *Hub, msg WSMessage) {
+	fmt.Printf("handleProcessedPrivate recieved: %s", msg)
 	msg.Content = "SECURE MSG: " + msg.Content // Example processing
 	hub.Direct <- msg
 }
@@ -114,9 +119,11 @@ func (c *Client) ReadPump(hub *Hub) {
 		var msg WSMessage
 		err := c.Conn.ReadJSON(&msg)
 		if err != nil {
+			log.Printf("Read error for client %s: %v", c.ID, err)
 			break
 		}
 		msg.Sender = c.ID
+		fmt.Printf("Parsed Message: Type=%s, Content=%s, Sender=%s\n", msg.Type, msg.Content, msg.Sender)
 
 		// ROUTING LOGIC
 		switch msg.Type {

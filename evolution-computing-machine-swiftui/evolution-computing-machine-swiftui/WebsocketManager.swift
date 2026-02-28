@@ -9,35 +9,38 @@ import SwiftUI
 import Foundation
 import Observation
 import UIKit
+import SwiftData
 internal import Combine
 
 class WebSocketManager: ObservableObject {
+    var modelContext: ModelContext?
     @Published var messages: [String] = []
     @Published var isConnected = false
     
     private var webSocketTask: URLSessionWebSocketTask?
         
-        // Get the unique ID for this device/app combo
-        private var deviceID: String {
-            return UIDevice.current.identifierForVendor?.uuidString ?? "unknown-device"
-        }
+    // Get the unique ID for this device
+//    private var deviceID: String {
+//        return UIDevice.current.identifierForVendor?.uuidString ?? "unknown-device"
+//    }
+    
+    lazy var shortDeviceID: String = {
+            let rawID = UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
+            return rawID.shortHash()
+        }()
     
     
     func connect() {
             let url = URL(string: "ws://localhost:8080/ws")!
             
-            // 1. Create a URLRequest
             var request = URLRequest(url: url)
             
-            // 2. Add your unique ID as a custom header
-            request.addValue(deviceID, forHTTPHeaderField: "X-Device-ID")
+            request.addValue(shortDeviceID, forHTTPHeaderField: "X-Device-ID")
             
-            // You can add other headers here too (e.g., Auth tokens)
             // request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
             let session = URLSession(configuration: .default)
             
-            // 3. Initialize the task with the REQUEST instead of the URL
             webSocketTask = session.webSocketTask(with: request)
             
             webSocketTask?.resume()
@@ -51,7 +54,19 @@ class WebSocketManager: ObservableObject {
     }
     
     func sendMessage(_ text: String) {
-        let message = URLSessionWebSocketTask.Message.string(text)
+        let messageObject: [String: Any] = [
+            "type": "broadcast",
+            "target": "",
+            "content": text,
+            "sender": shortDeviceID  
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: messageObject),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
+        }
+        
+        let message = URLSessionWebSocketTask.Message.string(jsonString)
         webSocketTask?.send(message) { error in
             if let error = error {
                 print("Send error: \(error)")
@@ -60,23 +75,67 @@ class WebSocketManager: ObservableObject {
     }
     
     private func receiveMessage() {
-        webSocketTask?.receive { [weak self] result in
-            switch result {
-            case .failure(let error):
-                print("Receive error: \(error)")
-                DispatchQueue.main.async { self?.isConnected = false }
-            case .success(let message):
-                switch message {
-                case .string(let text):
-                    DispatchQueue.main.async {
-                        self?.messages.append(text)
+            webSocketTask?.receive { [weak self] result in
+                switch result {
+                case .success(let message):
+                    if case .string(let text) = message {
+                        self?.handleIncomingJSON(text)
                     }
-                default:
-                    break
+                    self?.receiveMessage()
+                case .failure:
+                    DispatchQueue.main.async { self?.isConnected = false }
                 }
-                // Important: Re-call receiveMessage to keep listening!
-                self?.receiveMessage()
             }
+        }
+    
+    private func handleIncomingJSON(_ jsonString: String) {
+        guard let data = jsonString.data(using: .utf8),
+              let context = modelContext else {
+            print("Missing Model Context in Manager")
+            return
+        }
+
+        do {
+            let newMessage = try JSONDecoder().decode(Message.self, from: data)
+            
+            Task { @MainActor in
+                context.insert(newMessage)
+                
+                try? context.save()
+                
+                print("Inserted: \(newMessage.content). Total in context: \((try? context.fetchCount(FetchDescriptor<Message>())) ?? 0)")
+            }
+        } catch {
+            print("Decoding Error: \(error)")
+        }
+    }
+}
+
+extension WebSocketManager {
+    func clearAllMessages() {
+        guard let context = modelContext else { return }
+        
+        Task { @MainActor in
+            do {
+                // This deletes every instance of 'Message' from the database
+                try context.delete(model: Message.self)
+                try context.save()
+                print("Successfully cleared all messages.")
+            } catch {
+                print("Failed to clear messages: \(error)")
+            }
+        }
+    }
+}
+
+extension WebSocketManager {
+    func deleteMessage(_ message: Message) {
+        guard let context = modelContext else { return }
+        
+        Task { @MainActor in
+            context.delete(message)
+            try? context.save()
+            print("Deleted message: \(message.content)")
         }
     }
 }
