@@ -23,22 +23,18 @@ struct ContentView: View {
                                 .font(.headline)
                             HStack{
                                 Circle()
-                                                .fill(socket.isConnected ? .green : .red)
-                                                .frame(width: 8, height: 8)
+                                    .fill(socket.isConnected ? .green : .red)
+                                    .frame(width: 8, height: 8)
                                 Text(socket.isConnected ? "Connected" : "Offline")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                         }
-                        
                         Spacer()
-                        
                         ConnectionSwitch(socket: socket)
                     }
                     .padding()
                     .background(.ultraThinMaterial)
-
-                    // --- Chat History ---
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVStack(spacing: 12) {
@@ -46,18 +42,18 @@ struct ContentView: View {
                                     ChatBubble(message: msg)
                                         .id(msg.persistentModelID)
                                         .contextMenu {
-                                                    Button(role: .destructive) {
-                                                        socket.deleteMessage(msg)
-                                                    } label: {
-                                                        Label("Delete Message", systemImage: "trash")
-                                                    }
-                                                    
-                                                    Button {
-                                                        UIPasteboard.general.string = msg.content
-                                                    } label: {
-                                                        Label("Copy Text", systemImage: "doc.on.doc")
-                                                    }
-                                                }
+                                            Button(role: .destructive) {
+                                                socket.deleteMessage(msg)
+                                            } label: {
+                                                Label("Delete Message", systemImage: "trash")
+                                            }
+                                            
+                                            Button {
+                                                UIPasteboard.general.string = msg.content
+                                            } label: {
+                                                Label("Copy Text", systemImage: "doc.on.doc")
+                                            }
+                                        }
                                 }
                             }
                             .padding()
@@ -68,8 +64,6 @@ struct ContentView: View {
                             }
                         }
                     }
-
-                    // --- Input Field ---
                     inputField
                 }
                 .navigationBarTitleDisplayMode(.inline)
@@ -107,9 +101,29 @@ struct ContentView: View {
                     .font(.system(size: 30))
             }
             .disabled(messageText.isEmpty)
+            .contextMenu {
+                Button() {
+                    // send as keyImage(systemName: "person.2.shield.fill")
+                } label: {
+                    Label("Secure DM", systemImage: "person.2.badge.key.fill")
+                }
+                
+                Button {
+                    // send as encrypted
+                } label: {
+                    Label("Encrypt", systemImage: "firewall.fill")
+                }
+                
+                Button {
+                    // send as encrypted
+                } label: {
+                    Label("Translate", systemImage: "globe")
+                }
+            }
         }
         .padding()
         .background(.ultraThinMaterial)
+       
     }
 }
 
@@ -117,7 +131,6 @@ struct ConnectionSwitch: View {
     @ObservedObject var socket: WebSocketManager
     
     var body: some View {
-        // We create a custom binding to intercept the toggle action
         Toggle(isOn: Binding(
             get: { socket.isConnected },
             set: { newValue in
@@ -127,17 +140,9 @@ struct ConnectionSwitch: View {
                     socket.disconnect()
                 }
             }
-        )) {
-//            HStack {
-//                Image(systemName: socket.isConnected ? "wifi" : "wifi.slash")
-//                Text(socket.isConnected ? "Online" : "Offline")
-//            }
-//            .font(.subheadline)
-//            .fontWeight(.medium)
-//            .foregroundColor(socket.isConnected ? .green : .secondary)
-        }
-        .toggleStyle(SwitchToggleStyle(tint: .green)) // Makes the "On" state green
-        .fixedSize() // Prevents the toggle from taking up the whole row width
+        )) {}
+        .toggleStyle(SwitchToggleStyle(tint: .green))
+        .fixedSize()
         .animation(.spring(), value: socket.isConnected)
     }
 }

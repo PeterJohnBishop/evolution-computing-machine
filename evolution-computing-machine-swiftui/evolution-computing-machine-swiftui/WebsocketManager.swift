@@ -111,13 +111,13 @@ class WebSocketManager: ObservableObject {
     }
 }
 
+// delete all msgs
 extension WebSocketManager {
     func clearAllMessages() {
         guard let context = modelContext else { return }
         
         Task { @MainActor in
             do {
-                // This deletes every instance of 'Message' from the database
                 try context.delete(model: Message.self)
                 try context.save()
                 print("Successfully cleared all messages.")
@@ -128,10 +128,11 @@ extension WebSocketManager {
     }
 }
 
+// delete one msg
 extension WebSocketManager {
     func deleteMessage(_ message: Message) {
         guard let context = modelContext else { return }
-        
+
         Task { @MainActor in
             context.delete(message)
             try? context.save()

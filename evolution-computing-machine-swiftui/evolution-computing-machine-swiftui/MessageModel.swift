@@ -17,7 +17,7 @@ final class Message: Decodable {
     
     @Transient var isFromMe: Bool {
         let localID = UIDevice.current.identifierForVendor?.uuidString ?? ""
-                return sender == localID.shortHash()
+            return sender == localID.shortHash()
         }
     
     init(content: String, sender: String, timestamp: Date = Date()) {
@@ -33,7 +33,6 @@ final class Message: Decodable {
 
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
         self.content = try container.decode(String.self, forKey: .content)
         self.sender = try container.decode(String.self, forKey: .sender)
         self.timestamp = Date()
