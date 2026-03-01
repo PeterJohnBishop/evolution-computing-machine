@@ -10,14 +10,16 @@ import (
 )
 
 type WSMessage struct {
-	Type    string `json:"type"`    // broadcast or private
-	Target  string `json:"target"`  // id for private messages
-	Content string `json:"content"` // the data
-	Sender  string `json:"sender"`  // set by the server
+	Type     string `json:"type"`      // broadcast or private
+	TargetID string `json:"target_id"` // id for private messages
+	Content  string `json:"content"`   // the data
+	Sender   string `json:"sender"`    // set by the server
+	SenderID string `json:"sender_id"`
 }
 
 type Client struct {
 	ID   string
+	Name string
 	Conn *websocket.Conn
 	Send chan WSMessage
 }
@@ -52,6 +54,12 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
+			if existingClient, ok := h.Clients[client.ID]; ok {
+				log.Printf("Duplicate ID detected: %s. Closing old connection.", client.ID)
+				close(existingClient.Send)
+				existingClient.Conn.Close()
+				delete(h.Clients, client.ID)
+			}
 			h.Clients[client.ID] = client
 
 		case client := <-h.Unregister:
@@ -71,12 +79,12 @@ func (h *Hub) Run() {
 			}
 
 		case msg := <-h.Direct:
-			if client, ok := h.Clients[msg.Target]; ok {
+			if client, ok := h.Clients[msg.TargetID]; ok {
 				select {
 				case client.Send <- msg:
 				default:
 					close(client.Send)
-					delete(h.Clients, msg.Target)
+					delete(h.Clients, msg.TargetID)
 				}
 			}
 		}
@@ -122,7 +130,8 @@ func (c *Client) ReadPump(hub *Hub) {
 			log.Printf("Read error for client %s: %v", c.ID, err)
 			break
 		}
-		msg.Sender = c.ID
+		msg.Sender = c.Name
+		msg.SenderID = c.ID
 		fmt.Printf("Parsed Message: Type=%s, Content=%s, Sender=%s\n", msg.Type, msg.Content, msg.Sender)
 
 		// ROUTING LOGIC
@@ -145,7 +154,7 @@ func (c *Client) WritePump() {
 	}
 }
 
-func HandleWebsocket(id string, hub *Hub, ctx *gin.Context) {
+func HandleWebsocket(name string, id string, hub *Hub, ctx *gin.Context) {
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed for user %s: %v", id, err)
@@ -153,6 +162,7 @@ func HandleWebsocket(id string, hub *Hub, ctx *gin.Context) {
 	}
 
 	client := &Client{
+		Name: name,
 		ID:   id,
 		Conn: conn,
 		Send: make(chan WSMessage, 256),

@@ -40,13 +40,17 @@ func ServeGin() {
 	hub := websocket.NewHub()
 	go hub.Run()
 	r.GET("/ws", func(c *gin.Context) {
+		name := c.GetHeader("X-Client-Name")
 		id := c.GetHeader("X-Device-ID")
 		if id == "" {
 			c.JSON(401, gin.H{"error": "ID not found in context"})
 			return
 		}
-		log.Printf("%v connected to WebSocket", id)
-		websocket.HandleWebsocket(id, hub, c)
+		if name == "" {
+			// name = random name
+		}
+		log.Printf("%v connected to WebSocket", name)
+		websocket.HandleWebsocket(name, id, hub, c)
 	})
 
 	port := os.Getenv("PORT")

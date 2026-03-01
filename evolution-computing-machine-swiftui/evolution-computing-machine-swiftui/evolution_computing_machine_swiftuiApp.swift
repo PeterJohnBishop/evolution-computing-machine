@@ -1,10 +1,3 @@
-//
-//  evolution_computing_machine_swiftuiApp.swift
-//  evolution-computing-machine-swiftui
-//
-//  Created by M4Pro on 2/27/26.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -25,7 +18,7 @@ struct evolution_computing_machine_swiftuiApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MessageView()
         }
         .modelContainer(sharedModelContainer)
     }
