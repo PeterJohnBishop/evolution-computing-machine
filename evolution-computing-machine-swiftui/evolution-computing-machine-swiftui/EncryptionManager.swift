@@ -8,7 +8,7 @@
 import Foundation
 import CryptoKit
 
-struct AESService {
+struct EncryptionManager {
     // store this key in keychain
     static let sharedKey = SymmetricKey(size: .bits256)
 

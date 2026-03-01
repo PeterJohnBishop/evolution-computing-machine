@@ -14,6 +14,7 @@ struct MessageView: View {
     
     @AppStorage("senderName") private var senderName = "Guest"
     @State private var messageText = ""
+    @State private var isEncrypted = false
     
     @Query(sort: \Message.timestamp, order: .forward) private var savedMessages: [Message]
 
@@ -106,6 +107,23 @@ struct MessageView: View {
                     .foregroundStyle(socket.isConnected ? .blue : .gray)
             }
             .disabled(messageText.isEmpty || !socket.isConnected)
+            .contextMenu {
+                       Button() {
+                           // send as keyImage(systemName: "person.2.shield.fill")
+                       } label: {
+                           Label("Secure DM", systemImage: "person.2.badge.key.fill")
+                       }
+                       
+                       Button {
+                           if isEncrypted {
+                               messageText = EncryptionManager.decrypt(messageText) ?? messageText
+                           } else {
+                               messageText = EncryptionManager.encrypt(messageText) ?? messageText
+                           }
+                       } label: {
+                           Label("Encrypt", systemImage: "firewall.fill")
+                       }
+                   }
         }
         .padding()
     }
