@@ -9,9 +9,13 @@ import Foundation
 import CryptoKit
 
 struct EncryptionManager {
-    // store this key in keychain
+    
     static let sharedKey = SymmetricKey(size: .bits256)
-
+    
+    func generateNewKey() -> SymmetricKey {
+        return SymmetricKey(size: .bits256)
+    }
+    
     static func encrypt(_ text: String) -> String? {
         guard let data = text.data(using: .utf8) else { return nil }
         

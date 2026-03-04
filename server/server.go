@@ -1,10 +1,10 @@
 package server
 
 import (
+	"evolution-computing-machine/server/storage"
 	"evolution-computing-machine/server/websocket"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,8 +12,9 @@ import (
 
 var hub *websocket.Hub
 
-func ServeGin() {
+func ServeGin(port string, uri string) {
 	log.Println("Ordering Gin")
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
@@ -53,7 +54,8 @@ func ServeGin() {
 		websocket.HandleWebsocket(name, id, hub, c)
 	})
 
-	port := os.Getenv("PORT")
+	go storage.ConnectDB(uri)
+
 	if port == "" {
 		port = "8080"
 	}

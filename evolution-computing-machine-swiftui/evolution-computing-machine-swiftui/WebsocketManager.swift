@@ -42,7 +42,8 @@ class WebSocketManager: ObservableObject {
             "target_id": "",
             "content": text,
             "sender": name,
-            "sender_id": shortDeviceID
+            "sender_id": shortDeviceID,
+            "channel": ""
         ]
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: messageObject),

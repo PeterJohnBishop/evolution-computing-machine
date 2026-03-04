@@ -102,35 +102,42 @@ struct MessageView: View {
                 .padding(10).background(Color(.systemGray6)).cornerRadius(20)
             
             Button(action: sendMessage) {
+                isEncrypted ?
+                Image(systemName: "firewall.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(socket.isConnected ? .red : .gray) :
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 32))
                     .foregroundStyle(socket.isConnected ? .blue : .gray)
             }
             .disabled(messageText.isEmpty || !socket.isConnected)
-            .contextMenu {
-                       Button() {
-                           // send as keyImage(systemName: "person.2.shield.fill")
-                       } label: {
-                           Label("Secure DM", systemImage: "person.2.badge.key.fill")
-                       }
-                       
-                       Button {
-                           if isEncrypted {
-                               messageText = EncryptionManager.decrypt(messageText) ?? messageText
-                           } else {
-                               messageText = EncryptionManager.encrypt(messageText) ?? messageText
-                           }
-                       } label: {
-                           Label("Encrypt", systemImage: "firewall.fill")
-                       }
-                   }
+//            .contextMenu {
+//                       Button() {
+//                           // send as keyImage(systemName: "person.2.shield.fill")
+//                       } label: {
+//                           Label("Secure DM", systemImage: "person.2.badge.key.fill")
+//                       }
+//                       
+//                       Button {
+//                           isEncrypted.toggle()
+//                       } label: {
+//                           Label("Encrypt", systemImage: "firewall.fill")
+//                       }
+//                   }
         }
         .padding()
     }
 
     private func sendMessage() {
-        socket.sendMessage(messageText, name: senderName)
-        messageText = ""
+        if isEncrypted {
+            messageText = EncryptionManager.encrypt(messageText) ?? messageText
+            socket.sendMessage(messageText, name: senderName)
+            messageText = ""
+        } else {
+            messageText = EncryptionManager.decrypt(messageText) ?? messageText
+            socket.sendMessage(messageText, name: senderName)
+            messageText = ""
+        }
     }
 }
 

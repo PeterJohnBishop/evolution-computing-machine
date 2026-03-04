@@ -10,11 +10,12 @@ import (
 )
 
 type WSMessage struct {
-	Type     string `json:"type"`      // broadcast or private
-	TargetID string `json:"target_id"` // id for private messages
-	Content  string `json:"content"`   // the data
-	Sender   string `json:"sender"`    // set by the server
+	Type     string `json:"type"`
+	TargetID string `json:"target_id"`
+	Content  string `json:"content"`
+	Sender   string `json:"sender"`
 	SenderID string `json:"sender_id"`
+	Channel  string `json:"channel"`
 }
 
 type Client struct {
@@ -26,6 +27,7 @@ type Client struct {
 
 type Hub struct {
 	Clients    map[string]*Client
+	Channels   map[string]map[*Client]bool
 	Register   chan *Client
 	Unregister chan *Client
 	Broadcast  chan WSMessage
@@ -43,6 +45,7 @@ var upgrader = websocket.Upgrader{
 func NewHub() *Hub {
 	return &Hub{
 		Clients:    make(map[string]*Client),
+		Channels:   make(map[string]map[*Client]bool),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		Broadcast:  make(chan WSMessage),
@@ -65,6 +68,11 @@ func (h *Hub) Run() {
 		case client := <-h.Unregister:
 			if _, ok := h.Clients[client.ID]; ok {
 				delete(h.Clients, client.ID)
+
+				// remove client from all channels they were in
+				for _, clientsInChannel := range h.Channels {
+					delete(clientsInChannel, client)
+				}
 				close(client.Send)
 			}
 
@@ -117,6 +125,31 @@ func handleProcessedPrivate(hub *Hub, msg WSMessage) {
 	hub.Direct <- msg
 }
 
+// broadcast to channel
+func handleChannelBroadcast(hub *Hub, msg WSMessage, sender *Client) {
+	fmt.Printf("handleChannelBroadcast received: %s from %s\n", msg.Channel, sender.Name)
+
+	// check if channel exists, if not, create it
+	if _, ok := hub.Channels[msg.Channel]; !ok {
+		hub.Channels[msg.Channel] = make(map[*Client]bool)
+		log.Printf("Created new channel: %s", msg.Channel)
+	}
+
+	// add sender to the channel
+	hub.Channels[msg.Channel][sender] = true
+
+	// broadcast message to everyone in that specific channel
+	for client := range hub.Channels[msg.Channel] {
+		select {
+		case client.Send <- msg:
+		default:
+			close(client.Send)
+			delete(hub.Clients, client.ID)
+			delete(hub.Channels[msg.Channel], client)
+		}
+	}
+}
+
 func (c *Client) ReadPump(hub *Hub) {
 	defer func() {
 		hub.Unregister <- c
@@ -144,6 +177,8 @@ func (c *Client) ReadPump(hub *Hub) {
 			handlePrivate(hub, msg)
 		case "private_special":
 			handleProcessedPrivate(hub, msg)
+		case "channel_broadcast":
+			handleChannelBroadcast(hub, msg, c)
 		}
 	}
 }
