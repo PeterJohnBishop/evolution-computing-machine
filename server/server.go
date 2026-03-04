@@ -8,12 +8,23 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var hub *websocket.Hub
+var channelCollection *mongo.Collection
+var messageCollection *mongo.Collection
 
 func ServeGin(port string, uri string) {
 	log.Println("Ordering Gin")
+
+	db, err := storage.ConnectDB(uri)
+	if err != nil {
+		log.Fatalf("Database connection error: %s", err)
+	}
+
+	channelCollection = db.Database("chat_db").Collection("channels")
+	messageCollection = db.Database("chat_db").Collection("messages")
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
@@ -38,7 +49,7 @@ func ServeGin(port string, uri string) {
 		})
 	})
 
-	hub := websocket.NewHub()
+	hub := websocket.NewHub(channelCollection, messageCollection)
 	go hub.Run()
 	r.GET("/ws", func(c *gin.Context) {
 		name := c.GetHeader("X-Client-Name")
@@ -53,8 +64,6 @@ func ServeGin(port string, uri string) {
 		log.Printf("%v connected to WebSocket", name)
 		websocket.HandleWebsocket(name, id, hub, c)
 	})
-
-	go storage.ConnectDB(uri)
 
 	if port == "" {
 		port = "8080"

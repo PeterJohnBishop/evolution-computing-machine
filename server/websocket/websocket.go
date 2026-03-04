@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type WSMessage struct {
@@ -26,12 +27,14 @@ type Client struct {
 }
 
 type Hub struct {
-	Clients    map[string]*Client
-	Channels   map[string]map[*Client]bool
-	Register   chan *Client
-	Unregister chan *Client
-	Broadcast  chan WSMessage
-	Direct     chan WSMessage
+	Clients            map[string]*Client
+	Channels           map[string]map[*Client]bool
+	Register           chan *Client
+	Unregister         chan *Client
+	Broadcast          chan WSMessage
+	Direct             chan WSMessage
+	ChannelCollection  *mongo.Collection
+	MessagesCollection *mongo.Collection
 }
 
 var upgrader = websocket.Upgrader{
@@ -42,14 +45,16 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func NewHub() *Hub {
+func NewHub(chColl *mongo.Collection, msgColl *mongo.Collection) *Hub {
 	return &Hub{
-		Clients:    make(map[string]*Client),
-		Channels:   make(map[string]map[*Client]bool),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Broadcast:  make(chan WSMessage),
-		Direct:     make(chan WSMessage),
+		Clients:            make(map[string]*Client),
+		Channels:           make(map[string]map[*Client]bool),
+		Register:           make(chan *Client),
+		Unregister:         make(chan *Client),
+		Broadcast:          make(chan WSMessage),
+		Direct:             make(chan WSMessage),
+		ChannelCollection:  chColl,
+		MessagesCollection: msgColl,
 	}
 }
 
