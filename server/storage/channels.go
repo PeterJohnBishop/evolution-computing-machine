@@ -70,10 +70,9 @@ func UpdateChannel(id string, update bson.M) (*mongo.UpdateResult, error) {
 	return channelCollection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
 }
 
-func DeleteChannel(id string) (*mongo.DeleteResult, error) {
+func DeleteChannel(id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	objID, _ := primitive.ObjectIDFromHex(id)
-	return channelCollection.DeleteOne(ctx, bson.M{"_id": objID})
+	return channelCollection.DeleteOne(ctx, bson.M{"_id": id})
 }

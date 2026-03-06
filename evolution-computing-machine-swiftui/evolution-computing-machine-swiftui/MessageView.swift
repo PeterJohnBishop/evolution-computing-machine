@@ -10,7 +10,7 @@ import SwiftData
 
 struct MessageView: View {
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var socket = WebSocketManager()
+    @EnvironmentObject var socket: WebSocketManager
     
     @AppStorage("senderName") private var senderName = "Guest"
     @State private var messageText = ""
@@ -60,7 +60,9 @@ struct MessageView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 socket.modelContext = modelContext
-                socket.connect(name: senderName)
+                if !socket.isConnected {
+                                socket.connect(name: senderName)
+                            }
             }
         }
     }
@@ -127,7 +129,7 @@ struct MessageView: View {
         }
         .padding()
     }
-
+    
     private func sendMessage() {
         if isEncrypted {
             messageText = EncryptionManager.encrypt(messageText) ?? messageText
@@ -187,5 +189,8 @@ struct ChatBubble: View {
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: Message.self, configurations: config)
-    return MessageView().modelContainer(container)
+    let mockSocket = WebSocketManager()
+    return MessageView()
+        .modelContainer(container)
+        .environmentObject(mockSocket)
 }

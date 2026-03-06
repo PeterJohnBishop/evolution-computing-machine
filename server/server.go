@@ -49,6 +49,9 @@ func ServeGin(port string, uri string) {
 		})
 	})
 
+	AddChannelRoutes(r)
+	AddMessageRoutes(r)
+
 	hub := websocket.NewHub(channelCollection, messageCollection)
 	go hub.Run()
 	r.GET("/ws", func(c *gin.Context) {

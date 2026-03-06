@@ -3,6 +3,9 @@ import SwiftData
 
 @main
 struct evolution_computing_machine_swiftuiApp: App {
+    
+    @StateObject private var socketManager = WebSocketManager()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Message.self,
@@ -20,6 +23,7 @@ struct evolution_computing_machine_swiftuiApp: App {
         WindowGroup {
             MessageView()
         }
+        .environmentObject(socketManager)
         .modelContainer(sharedModelContainer)
     }
 }
