@@ -113,19 +113,6 @@ struct MessageView: View {
                     .foregroundStyle(socket.isConnected ? .blue : .gray)
             }
             .disabled(messageText.isEmpty || !socket.isConnected)
-//            .contextMenu {
-//                       Button() {
-//                           // send as keyImage(systemName: "person.2.shield.fill")
-//                       } label: {
-//                           Label("Secure DM", systemImage: "person.2.badge.key.fill")
-//                       }
-//                       
-//                       Button {
-//                           isEncrypted.toggle()
-//                       } label: {
-//                           Label("Encrypt", systemImage: "firewall.fill")
-//                       }
-//                   }
         }
         .padding()
     }

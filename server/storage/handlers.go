@@ -12,105 +12,110 @@ import (
 
 // Channel Handler Functions
 
-func HandleChannelCreation(c *gin.Context) {
-	var ch Channel
-	if err := c.ShouldBindJSON(&ch); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid request body"})
-		return
+func HandleChannelCreation(channelCollection *mongo.Collection) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ch Channel
+		if err := c.ShouldBindJSON(&ch); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid request body"})
+			return
+		}
+
+		ch.CreatedAt = time.Now()
+
+		result, err := CreateChannel(ch, channelCollection)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Could not create channel"})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{"success": true, "id": result.InsertedID})
 	}
-
-	ch.CreatedAt = time.Now()
-
-	result, err := CreateChannel(ch)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Could not create channel"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"success": true, "id": result.InsertedID})
 }
 
-func HandleGetChannelById(c *gin.Context) {
-	id := c.Param("id")
+func HandleGetChannelByName(channelCollection *mongo.Collection) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
 
-	if _, err := primitive.ObjectIDFromHex(id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid ID format"})
-		return
+		resp, err := GetChannel(name, channelCollection)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				c.JSON(http.StatusNotFound, gin.H{"success": false, "msg": "Channel not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Database error"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "channel": resp})
 	}
+}
 
-	resp, err := GetChannel(id)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
+func HandleGetAllChannels(channelCollection *mongo.Collection) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		resp, err := GetAllChannels(channelCollection)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": err.Error()})
+			return
+		}
+
+		if resp == nil {
+			resp = []Channel{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "channels": resp})
+	}
+}
+
+func HandleChannelUpdate(channelCollection *mongo.Collection) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		var updateData bson.M
+		if err := c.ShouldBindJSON(&updateData); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid request payload"})
+			return
+		}
+
+		delete(updateData, "_id")
+
+		result, err := UpdateChannel(id, updateData, channelCollection)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Failed to update channel"})
+			return
+		}
+
+		if result.MatchedCount == 0 {
 			c.JSON(http.StatusNotFound, gin.H{"success": false, "msg": "Channel not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Database error"})
-		return
-	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "channel": resp})
+		c.JSON(http.StatusOK, gin.H{"success": true, "msg": "Channel updated successfully"})
+	}
 }
 
-func HandleGetAllChannels(c *gin.Context) {
-	resp, err := GetAllChannels()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Could not fetch channels"})
-		return
+func HandleDeleteChannel(channelCollection *mongo.Collection) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		objID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid channel ID format"})
+			return
+		}
+
+		result, err := DeleteChannel(objID, channelCollection)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Failed to delete channel"})
+			return
+		}
+
+		if result.DeletedCount == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "msg": "Channel not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Channel deleted"})
 	}
-
-	if resp == nil {
-		resp = []Channel{}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true, "channels": resp})
-}
-
-func HandleChannelUpdate(c *gin.Context) {
-	id := c.Param("id")
-
-	var updateData bson.M
-	if err := c.ShouldBindJSON(&updateData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid request payload"})
-		return
-	}
-
-	delete(updateData, "_id")
-
-	result, err := UpdateChannel(id, updateData)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Failed to update channel"})
-		return
-	}
-
-	if result.MatchedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "msg": "Channel not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true, "msg": "Channel updated successfully"})
-}
-
-func HandleDeleteChannel(c *gin.Context) {
-	id := c.Param("id")
-
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "msg": "Invalid channel ID format"})
-		return
-	}
-
-	result, err := DeleteChannel(objID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": "Failed to delete channel"})
-		return
-	}
-
-	if result.DeletedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "msg": "Channel not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Channel deleted"})
 }
 
 // Message Handler Functions

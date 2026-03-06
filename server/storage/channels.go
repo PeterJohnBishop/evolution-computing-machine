@@ -11,34 +11,34 @@ import (
 )
 
 type Channel struct {
-	ID          primitive.ObjectID   `bson:"_id,omitempty"`
-	Name        string               `bson:"name"`
-	Description string               `bson:"description"`
-	UserIDs     []primitive.ObjectID `bson:"user_ids"`
-	CreatedAt   time.Time            `bson:"created_at"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name        string             `bson:"name" json:"name"`
+	Description string             `bson:"description" json:"description"`
+	UserIDs     []string           `bson:"user_ids" json:"user_ids"`
+	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
 }
 
-var channelCollection *mongo.Collection
-
-func CreateChannel(ch Channel) (*mongo.InsertOneResult, error) {
+func CreateChannel(ch Channel, channelCollection *mongo.Collection) (*mongo.InsertOneResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	ch.ID = primitive.NewObjectID()
+
 	ch.CreatedAt = time.Now()
+
 	return channelCollection.InsertOne(ctx, ch)
 }
 
-func GetChannel(id string) (Channel, error) {
+func GetChannel(name string, channelCollection *mongo.Collection) (Channel, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var ch Channel
-	objID, _ := primitive.ObjectIDFromHex(id)
-	err := channelCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&ch)
+	err := channelCollection.FindOne(ctx, bson.M{"name": name}).Decode(&ch)
 	return ch, err
 }
 
-func GetAllChannels() ([]Channel, error) {
+func GetAllChannels(channelCollection *mongo.Collection) ([]Channel, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -62,7 +62,7 @@ func GetAllChannels() ([]Channel, error) {
 	return channels, nil
 }
 
-func UpdateChannel(id string, update bson.M) (*mongo.UpdateResult, error) {
+func UpdateChannel(id string, update bson.M, channelCollection *mongo.Collection) (*mongo.UpdateResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -70,7 +70,7 @@ func UpdateChannel(id string, update bson.M) (*mongo.UpdateResult, error) {
 	return channelCollection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": update})
 }
 
-func DeleteChannel(id primitive.ObjectID) (*mongo.DeleteResult, error) {
+func DeleteChannel(id primitive.ObjectID, channelCollection *mongo.Collection) (*mongo.DeleteResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

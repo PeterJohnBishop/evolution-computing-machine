@@ -18,11 +18,7 @@ func ConnectDB(uri string) (*mongo.Client, error) {
 	if err != nil {
 		return &mongo.Client{}, err
 	}
-	defer func() {
-		if err = client.Disconnect(context.TODO()); err != nil {
-			panic(err)
-		}
-	}()
+
 	// Send a ping to confirm a successful connection
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		log.Fatal("Could not connect to DB:", err)

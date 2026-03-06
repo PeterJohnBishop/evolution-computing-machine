@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"evolution-computing-machine/server/storage"
 	"evolution-computing-machine/server/websocket"
 	"fmt"
@@ -22,6 +23,12 @@ func ServeGin(port string, uri string) {
 	if err != nil {
 		log.Fatalf("Database connection error: %s", err)
 	}
+
+	defer func() {
+		if err = db.Disconnect(context.TODO()); err != nil {
+			panic(err)
+		}
+	}()
 
 	channelCollection = db.Database("chat_db").Collection("channels")
 	messageCollection = db.Database("chat_db").Collection("messages")
@@ -49,7 +56,7 @@ func ServeGin(port string, uri string) {
 		})
 	})
 
-	AddChannelRoutes(r)
+	AddChannelRoutes(r, channelCollection)
 	AddMessageRoutes(r)
 
 	hub := websocket.NewHub(channelCollection, messageCollection)

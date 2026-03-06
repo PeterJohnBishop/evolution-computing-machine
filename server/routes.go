@@ -4,15 +4,16 @@ import (
 	"evolution-computing-machine/server/storage"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func AddChannelRoutes(r *gin.Engine) {
+func AddChannelRoutes(r *gin.Engine, channelCollection *mongo.Collection) {
 	v1 := r.Group("/v1")
-	v1.POST("/channel", storage.HandleChannelCreation)
-	v1.GET("/channel/:id", storage.HandleGetChannelById)
-	v1.GET("/channel/all", storage.HandleGetAllChannels)
-	v1.PUT("/channel/:id", storage.HandleChannelUpdate)
-	v1.DELETE("/channel/:id", storage.HandleDeleteChannel)
+	v1.POST("/channel", storage.HandleChannelCreation(channelCollection))
+	v1.GET("/channel/:name", storage.HandleGetChannelByName(channelCollection))
+	v1.GET("/channel/all", storage.HandleGetAllChannels(channelCollection))
+	v1.PUT("/channel/:id", storage.HandleChannelUpdate(channelCollection))
+	v1.DELETE("/channel/:id", storage.HandleDeleteChannel(channelCollection))
 }
 
 func AddMessageRoutes(r *gin.Engine) {
